@@ -22,6 +22,8 @@ urn <- tibble(ID = 1:1000,
 # beads before you assign the `ID` values. If you don't tell sample() how many
 # you want, it just gives you back everything, reordered. Try `sample(letters)`
 # to see. (Note that `letters` is a built in object in R.)
+
+# sample_n/rep_sample_n: work best on a tibble
               
 ```
 
@@ -32,10 +34,37 @@ We are learning about sampling this week. We are taking the theory of Chapter 5 
 
 **Prompt:** Without using rep_sample_n(), sample 30 beads at random from the urn five times. The resulting tibble should have two columns: `replicate` (with a value of 1 to 5) and `samp` (a list column in which each item is a tibble with 30 rows sampled, with replacement, from `urn`). Each tibble in `samp` will have the same two columns as `urn`. Hint: `sample_n()` is a very handy function. It will sample a random selection of rows from a tibble which you pass it. Also, use `str()` and `view()` interactively to confirm that your oject looks the way you want.
 
+```{r}
+# make an empty tibble with the number of rows equal to the number of things that you want
+random_samples <- tibble(replicate = 1:5) %>%
+  
+  # a list-column of 30 rows, each a sample form urn
+  mutate(samp = map(replicate, ~ sample_n(urn, size = 30)))
+
+```
+
+
 
 ## Scene 2
 
 **Prompt:** What is the probability that, if you sample 50 beads at random, there will be more red than blue beads in the sample?
+
+```{r}
+# a column for the # red beads
+# a column for the # blue beads
+# column is num_red > num_blue
+
+probability_test <- tibble(replicate = 1:1000) %>%
+    mutate(samp = map(replicate, ~ sample_n(urn, size = 50, replace = TRUE))) %>%
+  mutate(is_red = map_dbl(samp, ~sum(.$color == "red")),
+         is_blue = map_dbl(samp, ~sum(.$color == "blue")),
+         red_greater = is_red > is_blue
+        ) %>%
+  summarize(probability = sum(red_greater)/n())
+
+probability_test
+
+```
 
 
 
@@ -47,9 +76,36 @@ Let's follow that same intuition in the case of the urn. We have an urn with 1,0
 
 * Using `rbinom()` calculate the number of red beads we might draw from the urn with a paddle of size 25. Hint: `n` is 1 in this case. What does it mean if we set `n` equal to 10?
 
+```{r}
+rbinom(n = 1, size = 25, prob = probability_test$probability)
+```
+
+
 * Create a tibble with two columns: `numb_red_urn` and `numb_red_paddle`. Initially, the tibble has one row, with `numb_red_urn` set to 400, as in the previous question, and `numb_red_paddle` being the number of red drawn using `rbinom`.
+
+```{r}
+ x <- tibble(numb_red_urn = 400, 
+       numb_red_paddle = rbinom(n = 1, size = 25, prob = 0.4))
+x
+```
+
 
 * Extend that tibble to have 7 rows, with `numb_red_urn` set to 100, 200, ..., 700. Make sure that the results in `numb_red_paddle` make sense. `seq()` and `map_int()` are useful.
 
+```{r}
+ x <- tibble(numb_red_urn = seq(from = 100, to = 700, by = 100), 
+       numb_red_paddle = map_int(numb_red_urn, ~ rbinom(n = 1, size = 25, prob = ./1000)))
+x
+```
+
+
 * Still using a tibble with those 7 rows, call `rbinom()` with `n = 10`. (This may require other changes in your code.) Turn the resulting tibble, in which `numb_red_paddle` is a list column into an easier-to-work-with tibble in which `numb_red_paddle` is an integer. Hint: `unnest()`. Interpret the resulting object.
+
+```{r}
+ x2 <- tibble(numb_red_urn = seq(from = 100, to = 700, by = 100), 
+       numb_red_paddle = map(numb_red_urn, ~ rbinom(n = 10, size = 25, prob = ./1000))) %>%
+  unnest(numb_red_paddle)
+x2
+```
+
 
